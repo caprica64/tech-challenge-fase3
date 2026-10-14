@@ -1,0 +1,23 @@
+# ----------------------------------------------------------------------------
+# Configuração do Prometheus para a stack de monitoramento local (R6.4).
+#
+# Faz o scrape das métricas da API de triagem, expostas em /metrics pelo
+# prometheus_client (tarefa 10). O alvo usa o DNS de serviço do Docker Compose
+# (api:8000), de modo que o Prometheus e a API precisam estar na mesma rede
+# (ver docker-compose.yml, rede "monitoring").
+# ----------------------------------------------------------------------------
+
+global:
+  # Intervalo padrão de coleta e de avaliação (R6.4): 15 segundos.
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Job que coleta as métricas da API FastAPI de triagem.
+  - job_name: "triagem-api"
+    # metrics_path padrão é "/metrics" — explicitado aqui para clareza.
+    metrics_path: /metrics
+    scrape_interval: 15s
+    static_configs:
+      # DNS de serviço do Compose: resolve para o container "api" na porta 8000.
+      - targets: ["api:8000"]

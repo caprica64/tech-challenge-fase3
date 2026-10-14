@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1
+# ----------------------------------------------------------------------------
+# Imagem AWS Lambda (runtime de container) da API de triagem de laudos (R3.1, R10).
+#
+# Diferenças em relação ao Dockerfile local:
+#   - Base oficial da AWS para Lambda Python 3.11 (inclui o Lambda Runtime
+#     Interface Client), em vez de python:3.11-slim + Uvicorn.
+#   - A MESMA aplicação FastAPI roda via o adaptador ASGI `mangum`
+#     (handler = Mangum(app) em src/api/main.py).
+#   - O modelo NÃO é embutido na imagem: ele é baixado do Amazon S3 em runtime,
+#     no cold start, para /tmp (ver src/model/inference.py). Por isso NÃO há
+#     `COPY models/` aqui — o bucket/chave vêm das env vars MODEL_BUCKET /
+#     MODEL_KEY / MODEL_FORMAT (parametrizadas pelo SAM, nunca hardcoded).
+#
+# O build e o push desta imagem para o ECR são conduzidos pelo AWS SAM
+# (`sam build` / `sam deploy`) — ver template.yaml (tarefa 15).
+# ----------------------------------------------------------------------------
+FROM public.ecr.aws/lambda/python:3.11
+
+# Instala as dependências primeiro para aproveitar o cache de camadas: só é
+# refeito quando requirements.txt muda. LAMBDA_TASK_ROOT é o diretório raiz do
+# código no runtime da Lambda (destino dos imports do handler).
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+
+# Código da aplicação. Preserva o pacote `src/` para que o import path do
+# handler (`src.api.main.handler`) funcione a partir de LAMBDA_TASK_ROOT.
+COPY src/ ${LAMBDA_TASK_ROOT}/src/
+
+# Handler da Lambda: o adaptador `mangum` que embrulha a app FastAPI.
+# `handler` é o objeto Mangum definido em src/api/main.py.
+CMD ["src.api.main.handler"]

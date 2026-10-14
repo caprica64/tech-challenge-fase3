@@ -1,0 +1,54 @@
+[project]
+name = "triagem-laudos-medicos"
+version = "0.1.0"
+description = "Sistema de triagem automática de laudos médicos (MLOps - FIAP Fase 3)"
+requires-python = ">=3.11"
+
+# ----------------------------------------------------------------------------
+# Ruff — lint (bloqueante no CI)
+# ----------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "models",
+    "data",
+]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, UP: pyupgrade,
+# B: flake8-bugbear, C4: comprehensions, SIM: simplify
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # asserts são esperados em testes
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ----------------------------------------------------------------------------
+# Bandit — SAST (informacional no CI, não bloqueia)
+# ----------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build", "dist"]
+# B101: assert_used — assertivas em testes não são risco de produção
+skips = ["B101"]
+
+# ----------------------------------------------------------------------------
+# Pytest
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra -q"

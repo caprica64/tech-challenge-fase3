@@ -1,0 +1,118 @@
+# ----------------------------------------------------------------------------
+# Stack de monitoramento local (R6.3, R6.4).
+#
+# Sobe três serviços integrados numa rede compartilhada:
+#   - api        : a API FastAPI de triagem, construída a partir do Dockerfile
+#                  local; expõe /predict, /health e /metrics na porta 8000.
+#   - prometheus : coleta (scrape) as métricas da API em http://api:8000/metrics
+#                  a cada 15s (configuração em monitoring/prometheus/prometheus.yml).
+#   - grafana    : visualização; consome o Prometheus como datasource. O
+#                  provisionamento (datasource + dashboards) é entregue pela
+#                  tarefa 12 nos diretórios montados abaixo.
+#
+# Observação: a chave de topo "version:" foi omitida intencionalmente — ela é
+# obsoleta no Docker Compose moderno (Compose Spec) e gera aviso de deprecação.
+#
+# Uso:
+#   docker compose up --build
+#   API        -> http://localhost:8000  (/predict, /health, /metrics)
+#   Prometheus -> http://localhost:9090
+#   Grafana    -> http://localhost:3000  (admin / admin)
+# ----------------------------------------------------------------------------
+
+services:
+  # --------------------------------------------------------------------------
+  # API de inferência (R6.3). Construída da imagem local (Dockerfile), que já
+  # instrumenta /metrics via prometheus_client (tarefa 10).
+  # --------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: triagem-laudos-api:local
+    container_name: triagem-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Porta interna onde o Uvicorn escuta (ver Dockerfile CMD).
+      PORT: "8000"
+    healthcheck:
+      # Reutiliza o /health da API para marcar o serviço como saudável.
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Prometheus (R6.4). Faz scrape das métricas da API usando o DNS de serviço
+  # do Compose (api:8000), por isso ambos precisam da mesma rede "monitoring".
+  # --------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: triagem-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      # Configuração de scrape (somente leitura).
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # Persistência do TSDB entre reinícios.
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    depends_on:
+      - api
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Grafana. Visualiza as métricas coletadas pelo Prometheus. O datasource e os
+  # dashboards são provisionados por arquivo (tarefa 12) a partir dos diretórios
+  # montados abaixo — assim os painéis aparecem automaticamente no "up".
+  #
+  # Credenciais de admin: definidas via env apenas para a demo local. NÃO são
+  # seguras para produção; em nuvem o alvo é Amazon Managed Grafana (AMG).
+  # --------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: triagem-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      # Credenciais da demo local (admin/admin). Trocar/!usar segredos reais
+      # fora de um ambiente de desenvolvimento.
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      # Desabilita telemetria de uso para a demo.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      # Provisionamento declarativo (datasource + dashboards) — tarefa 12.
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      # Arquivos JSON de dashboards referenciados pelo provisioning — tarefa 12.
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # Persistência de estado do Grafana (anotações, prefs) entre reinícios.
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+# Rede compartilhada: permite que o Prometheus resolva "api" por nome de serviço.
+networks:
+  monitoring:
+    driver: bridge
+
+# Volumes nomeados para persistência de dados dos serviços.
+volumes:
+  prometheus-data:
+  grafana-data:

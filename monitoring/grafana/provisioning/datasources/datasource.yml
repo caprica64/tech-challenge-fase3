@@ -1,0 +1,29 @@
+# ----------------------------------------------------------------------------
+# Provisionamento do datasource do Grafana (R6.6).
+#
+# Declara o Prometheus como datasource padrão, de forma reproduzível (sem
+# cliques manuais na UI). O Grafana lê este arquivo de
+# /etc/grafana/provisioning/datasources (montado via docker-compose.yml) no
+# startup e cria/atualiza o datasource automaticamente.
+#
+# A URL usa o DNS de serviço do Docker Compose (http://prometheus:9090), de
+# modo que o Grafana resolve o Prometheus pelo nome do serviço dentro da rede
+# compartilhada "monitoring".
+# ----------------------------------------------------------------------------
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    # DNS de serviço do Compose: resolve para o container "prometheus":9090.
+    url: http://prometheus:9090
+    # Datasource padrão — usado pelos painéis do dashboard "triagem".
+    isDefault: true
+    # UID estável referenciado pelos targets do dashboard (triagem.json).
+    uid: prometheus
+    editable: true
+    jsonData:
+      # Alinhado ao scrape_interval do Prometheus (15s) — ver prometheus.yml.
+      timeInterval: 15s

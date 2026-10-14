@@ -1,0 +1,28 @@
+# ----------------------------------------------------------------------------
+# Provisionamento de dashboards do Grafana (R6.6).
+#
+# Declara um "provider" de dashboards que carrega todos os JSONs do diretório
+# /var/lib/grafana/dashboards (montado via docker-compose.yml a partir de
+# monitoring/grafana/dashboards). O Grafana lê este arquivo de
+# /etc/grafana/provisioning/dashboards no startup e importa os dashboards
+# automaticamente — de forma reproduzível, sem import manual.
+# ----------------------------------------------------------------------------
+
+apiVersion: 1
+
+providers:
+  - name: triagem
+    orgId: 1
+    # Pasta exibida na UI do Grafana para agrupar os dashboards provisionados.
+    folder: Triagem
+    type: file
+    # Permite editar na UI; alterações não são gravadas de volta no arquivo.
+    disableDeletion: false
+    # Reavalia o diretório periodicamente para refletir mudanças nos JSONs.
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      # Diretório montado com os JSONs de dashboards (ver docker-compose.yml).
+      path: /var/lib/grafana/dashboards
+      # Mantém a estrutura de subpastas, se houver, espelhando o diretório.
+      foldersFromFilesStructure: false

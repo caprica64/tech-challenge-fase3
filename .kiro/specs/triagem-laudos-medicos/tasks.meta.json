@@ -1,0 +1,420 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Estruturar o repositório e configuração base": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609047
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967617832
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967868912
+      }
+    ],
+    "2.1 Implementar o preparo do dataset público (Medical Abstracts TC Corpus)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609114
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967876254
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971383742
+      }
+    ],
+    "2.2 Implementar fallback sintético para CI/offline": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609190
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971390653
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971534553
+      }
+    ],
+    "3.1 Implementar pré-processamento e treino": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609233
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971546553
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971805986
+      }
+    ],
+    "3.2 Implementar o módulo de inferência": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609278
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971812501
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971964017
+      }
+    ],
+    "4.1 Definir schemas e endpoints": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609334
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971971299
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972079349
+      }
+    ],
+    "4.2 Implementar tratamento de erros": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609389
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972082814
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972289859
+      }
+    ],
+    "5.1 Criar o Dockerfile local": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609426
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972298088
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972484424
+      }
+    ],
+    "5.2 Implementar script de benchmark de latência (baseline)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609492
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972487830
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972612669
+      }
+    ],
+    "6. Escrever a análise de arquitetura AWS no README": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609524
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972619972
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972719814
+      }
+    ],
+    "7.1 Testes de inferência": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609557
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972726713
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973104588
+      }
+    ],
+    "7.2 Testes de API": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609623
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973108377
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973244717
+      }
+    ],
+    "8. Configurar o pipeline CI/CD (GitHub Actions)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609650
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973251872
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973458447
+      }
+    ],
+    "9. Implementar a DAG do Airflow": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609685
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973462144
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974042612
+      }
+    ],
+    "10. Instrumentar a API com métricas Prometheus": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609757
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974046455
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974215592
+      }
+    ],
+    "11. Criar a stack de monitoramento (Docker Compose)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609789
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974219623
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974451994
+      }
+    ],
+    "12. Provisionar o dashboard do Grafana": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609819
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974459792
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974693502
+      }
+    ],
+    "13.1 Exportar o modelo para ONNX": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609882
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974697992
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974842570
+      }
+    ],
+    "13.2 Comparar latência e acurácia (original vs. otimizado)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609913
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791974846365
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791975212395
+      }
+    ],
+    "14. Implementar o container e carregamento do modelo para AWS Lambda": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609943
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791975216774
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791975470168
+      }
+    ],
+    "15. Criar a infraestrutura como código (AWS SAM) parametrizada": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967609986
+      },
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791975474397
+      }
+    ],
+    "16. Configurar DVC com remote S3": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967610035
+      }
+    ],
+    "17. Finalizar o README e documentação de entrega": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967610066
+      }
+    ],
+    "18. Garantir qualidade do repositório e versionamento": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791967610094
+      }
+    ],
+    "2. Implementar geração/preparo do dataset": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971534598
+      }
+    ],
+    "3. Implementar o pipeline de ML (treino e inferência)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791971964052
+      }
+    ],
+    "4. Implementar a API REST (FastAPI)": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972289932
+      }
+    ],
+    "5. Containerizar a API (local) e medir baseline de latência": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791972612715
+      }
+    ],
+    "7. Escrever testes automatizados": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791973244749
+      }
+    ],
+    "13. Implementar exportação ONNX e benchmark comparativo": [
+      {
+        "executionId": "717f3fe2-517c-4bb5-8064-f6ac653869f6",
+        "chatSessionId": "sess_c97ba164-a01b-4289-b566-eb2d84d64ed8",
+        "timestamp": 1791975212438
+      }
+    ]
+  }
+}

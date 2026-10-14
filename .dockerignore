@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# Specs / docs internos
+.kiro
+
+# Python caches
+__pycache__/
+*.py[codz]
+*.so
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# Ambientes virtuais
+.venv
+venv/
+env/
+ENV/
+.env
+
+# Dados (não vão para a imagem — datasets carregados via DVC)
+data/*.csv
+
+# Artefatos de modelo: necessários na imagem LOCAL (Dockerfile) para que a API
+# carregue o modelo no startup (R3.3). Mantê-los no contexto de build permite o
+# `COPY models/`. A imagem Lambda (Dockerfile.lambda) carrega o modelo do S3 em
+# runtime e não depende destes arquivos no contexto.
+#   models/*.pkl   -> incluído (artefato local)
+#   models/*.onnx  -> incluído quando presente (artefato otimizado)
+models/metrics.json
+
+# Testes e ferramentas de dev (não vão para a imagem)
+tests/
+scripts/
+monitoring/
+airflow/
+
+# IaC / compose (não precisam dentro da imagem)
+docker-compose.yml
+template.yaml
+samconfig.toml
+Dockerfile
+Dockerfile.lambda
+.dockerignore
+
+# IDE / SO
+.idea/
+.vscode/
+.DS_Store

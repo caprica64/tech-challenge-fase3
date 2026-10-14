@@ -53,7 +53,7 @@ flowchart TD
 
 ### Etapa 0 — Fundação do projeto
 
-- [ ] 1. Estruturar o repositório e configuração base
+- [x] 1. Estruturar o repositório e configuração base
   - Criar a estrutura de pastas (`src/api`, `src/model`, `src/data`, `scripts`, `monitoring`, `tests`, `airflow/dags`, `models`, `data`)
   - Criar `requirements.txt` com dependências (fastapi, uvicorn, scikit-learn, prometheus-client, onnxruntime, skl2onnx, joblib, mangum, pandas, pytest, ruff, bandit, dvc[s3])
   - Criar `pyproject.toml` com configuração de ruff, bandit e pytest
@@ -62,113 +62,113 @@ flowchart TD
 
 ### Etapa 1 — Decisão arquitetural + API inicial
 
-- [ ] 2. Implementar geração/preparo do dataset
-- [ ] 2.1 Implementar o preparo do dataset público (Medical Abstracts TC Corpus)
+- [x] 2. Implementar geração/preparo do dataset
+- [x] 2.1 Implementar o preparo do dataset público (Medical Abstracts TC Corpus)
   - Criar `src/data/prepare_dataset.py`: carregar o dataset público e mapear rótulos para `{normal, atencao, urgente}`
   - Gravar saída canônica em `data/laudos.csv` com colunas `text,label`
   - Documentar o mapeamento de rótulos em comentários/docstring
   - _Requisitos: R9.1, R9.2, R9.4, R9.5_
-- [ ] 2.2 Implementar fallback sintético para CI/offline
+- [x] 2.2 Implementar fallback sintético para CI/offline
   - Criar `src/data/generate_dataset.py`: gerar >= 2.000 amostras rotuladas em inglês a partir de templates por classe, com seed fixa
   - _Requisitos: R9.2, R9.3, R9.8_
 
-- [ ] 3. Implementar o pipeline de ML (treino e inferência)
-- [ ] 3.1 Implementar pré-processamento e treino
+- [x] 3. Implementar o pipeline de ML (treino e inferência)
+- [x] 3.1 Implementar pré-processamento e treino
   - Criar `src/model/preprocessing.py` (normalização) e `src/model/train.py` com `Pipeline(TfidfVectorizer + LogisticRegression)`, seed fixa, split estratificado
   - Avaliar (accuracy, f1 por classe) e persistir `models/model.pkl` + `models/metrics.json`
   - _Requisitos: R1.1, R1.3, R1.4, R1.6, R9.6, R9.7_
-- [ ] 3.2 Implementar o módulo de inferência
+- [x] 3.2 Implementar o módulo de inferência
   - Criar `src/model/inference.py` com `predict(text) -> {label, score, scores}`, carregando ONNX (fallback `.pkl`)
   - Tratar texto vazio/inválido sinalizando erro de validação
   - _Requisitos: R1.1, R1.2, R1.5_
 
-- [ ] 4. Implementar a API REST (FastAPI)
-- [ ] 4.1 Definir schemas e endpoints
+- [x] 4. Implementar a API REST (FastAPI)
+- [x] 4.1 Definir schemas e endpoints
   - Criar `src/api/schemas.py` (Pydantic: request com `text` min_length 1; response com `label`, `score`, `scores`, `model_version`, `inference_ms`)
   - Criar `src/api/main.py` com `POST /predict`, `GET /health`; carregar o modelo no `lifespan` (uma vez)
   - _Requisitos: R2.1, R2.2, R2.3, R2.6, R1.5_
-- [ ] 4.2 Implementar tratamento de erros
+- [x] 4.2 Implementar tratamento de erros
   - 422 para `text` inválido; 503 quando modelo não carregado; 500 em falha de inferência (sem vazar stack trace)
   - _Requisitos: R2.4, R2.5_
 
-- [ ] 5. Containerizar a API (local) e medir baseline de latência
-- [ ] 5.1 Criar o Dockerfile local
+- [x] 5. Containerizar a API (local) e medir baseline de latência
+- [x] 5.1 Criar o Dockerfile local
   - Base `python:3.11-slim`, instalar deps, copiar `src/` e artefato, expor `8000`, CMD Uvicorn
   - _Requisitos: R3.1, R3.2, R3.3, R3.4, R3.5_
-- [ ] 5.2 Implementar script de benchmark de latência (baseline)
+- [x] 5.2 Implementar script de benchmark de latência (baseline)
   - Criar `scripts/benchmark.py` medindo p50/p95/média sobre N requisições do modelo `.pkl` (baseline local)
   - _Requisitos: R7.2, R11.1_
 
-- [ ] 6. Escrever a análise de arquitetura AWS no README
+- [x] 6. Escrever a análise de arquitetura AWS no README
   - Documentar batch vs. real-time e justificar real-time; descrever Lambda (container) + API Gateway + S3 + ECR; justificar Lambda vs. ECS/Fargate/EKS; registrar AMP + AMG como observabilidade gerenciada
   - _Requisitos: R10.1, R10.2, R10.3, R10.4, R10.5, R10.7, R10.9_
 
 ### Etapa 2 — CI/CD + pipeline de treino
 
-- [ ] 7. Escrever testes automatizados
-- [ ] 7.1 Testes de inferência
+- [x] 7. Escrever testes automatizados
+- [x] 7.1 Testes de inferência
   - Criar `tests/test_inference.py`: label válido, score em [0,1], equivalência `.pkl` vs `.onnx` (tolerância)
   - _Requisitos: R8.4_
-- [ ] 7.2 Testes de API
+- [x] 7.2 Testes de API
   - Criar `tests/test_api.py` (TestClient): `/predict` 200 e 422, `/health` 200, `/metrics` 200 text/plain
   - _Requisitos: R8.4, R2.1, R2.3, R2.4_
 
-- [ ] 8. Configurar o pipeline CI/CD (GitHub Actions)
+- [x] 8. Configurar o pipeline CI/CD (GitHub Actions)
   - Criar `.github/workflows/ci.yml` disparado em push/PR: job `lint` (ruff, bloqueante), job `security` (bandit informacional, `continue-on-error`), job `test` (pytest, bloqueante), job `build` (docker build, `needs: [lint, test]`)
   - Garantir que falha de lint/test bloqueia build/merge; CI dedicado a MLOps (sem deploy AWS)
   - _Requisitos: R4.1, R4.2, R4.3, R4.4, R4.5, R4.6_
 
-- [ ] 9. Implementar a DAG do Airflow
+- [x] 9. Implementar a DAG do Airflow
   - Criar `airflow/dags/train_triage_model.py` com tarefas `load_data -> preprocess -> train -> evaluate -> export_onnx -> save_artifacts`, reusando funções de `src/model/`
   - `schedule_interval=None` (trigger manual), falha interrompe dependentes, persiste novo artefato
   - _Requisitos: R5.1, R5.2, R5.3, R5.4, R5.5_
 
 ### Etapa 3 — Monitoramento e observabilidade
 
-- [ ] 10. Instrumentar a API com métricas Prometheus
+- [x] 10. Instrumentar a API com métricas Prometheus
   - Criar `src/api/metrics.py`: Counter `http_requests_total` (method/endpoint/status), Histogram `http_request_duration_seconds`, Histogram `model_inference_duration_seconds`, Counter `prediction_total`
   - Expor `GET /metrics` via `generate_latest()`; aplicar middleware na app
   - _Requisitos: R6.1, R6.2_
 
-- [ ] 11. Criar a stack de monitoramento (Docker Compose)
+- [x] 11. Criar a stack de monitoramento (Docker Compose)
   - Criar `docker-compose.yml` subindo API + Prometheus + Grafana
   - Criar `monitoring/prometheus/prometheus.yml` com scrape da API (`/metrics`, 15s)
   - _Requisitos: R6.3, R6.4_
 
-- [ ] 12. Provisionar o dashboard do Grafana
+- [x] 12. Provisionar o dashboard do Grafana
   - Criar `monitoring/grafana/provisioning/` (datasource + dashboard) e `monitoring/grafana/dashboards/triagem.json` com >= 3 painéis: total de requisições, latência (p95 via `histogram_quantile`), taxa de erro (status 5xx)
   - _Requisitos: R6.5, R6.6_
 
 ### Etapa 4 — Otimização de latência + deploy AWS + entrega
 
-- [ ] 13. Implementar exportação ONNX e benchmark comparativo
-- [ ] 13.1 Exportar o modelo para ONNX
+- [x] 13. Implementar exportação ONNX e benchmark comparativo
+- [x] 13.1 Exportar o modelo para ONNX
   - Criar `src/model/export_onnx.py` convertendo o pipeline completo via `skl2onnx` para `models/model.onnx`
   - _Requisitos: R7.1_
-- [ ] 13.2 Comparar latência e acurácia (original vs. otimizado)
+- [x] 13.2 Comparar latência e acurácia (original vs. otimizado)
   - Estender `scripts/benchmark.py` para comparar `.pkl` vs `.onnx` (p50/p95/média, ganho %) e accuracy/f1; gravar `benchmark_results.md`/`.json`
   - Verificar meta p95 < 100 ms local e documentar trade-off de acurácia
   - _Requisitos: R7.2, R7.3, R7.4, R7.5, R11.1, R11.2, R11.3_
 
-- [ ] 14. Implementar o container e carregamento do modelo para AWS Lambda
+- [x] 14. Implementar o container e carregamento do modelo para AWS Lambda
   - Criar `Dockerfile.lambda` (base `public.ecr.aws/lambda/python:3.11`, handler via `mangum`)
   - Ajustar `src/api/main.py`/`inference.py` para carregar `model.onnx` do S3 no cold start (escopo global) usando env vars `MODEL_BUCKET`, `MODEL_KEY`, `MODEL_FORMAT`
   - _Requisitos: R3.1, R10.3, R10.4, R10.6_
 
-- [ ] 15. Criar a infraestrutura como código (AWS SAM) parametrizada
+- [-] 15. Criar a infraestrutura como código (AWS SAM) parametrizada
   - Criar `template.yaml`: `Serverless::Function` (PackageType Image), HttpApi, bucket S3, IAM Role (`s3:GetObject` + logs); `Parameters` (ModelBucketName, ModelKey, Stage, MemorySize, Timeout)
   - Criar `samconfig.toml` com parâmetros por ambiente; sem valores hardcoded
   - _Requisitos: R10.3, R10.4, R10.6, R10.8_
 
-- [ ] 16. Configurar DVC com remote S3
+- [~] 16. Configurar DVC com remote S3
   - Inicializar DVC, criar `dvc.yaml` (estágio `prepare_dataset`), rastrear `data/laudos.csv`, configurar `.dvc/config` com remote S3 (mesmo bucket do modelo)
   - _Requisitos: R9.1, R10.6_
 
-- [ ] 17. Finalizar o README e documentação de entrega
+- [~] 17. Finalizar o README e documentação de entrega
   - Documentar: arquitetura, como rodar local, stack de monitoramento, pipeline, deploy SAM (`sam build`/`sam deploy --guided`), teardown (`sam delete`), parametrização, resultados de benchmark, link do vídeo STAR e lições aprendidas
   - _Requisitos: R8.3, R8.5, R11.4, R11.5, R11.6, R10.1_
 
-- [ ] 18. Garantir qualidade do repositório e versionamento
+- [~] 18. Garantir qualidade do repositório e versionamento
   - Revisar estrutura, aplicar commits semânticos (Conventional Commits) e confirmar que lint/bandit/testes passam localmente
   - _Requisitos: R8.1, R8.2, R8.4_
 

@@ -218,3 +218,28 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# ----------------------------------------------------------------------------
+# Projeto — triagem de laudos médicos
+# ----------------------------------------------------------------------------
+
+# Dados (rastreados via DVC, não via Git)
+data/*.csv
+!data/.gitkeep
+
+# Artefatos de modelo
+models/*.pkl
+models/*.onnx
+models/*.json
+!models/.gitkeep
+
+# Resultados de benchmark gerados
+benchmark_results.md
+benchmark_results.json
+
+# DVC — cache local e temporários (config é versionado)
+/.dvc/cache
+/.dvc/tmp
+/.dvc/config.local
+
+# AWS SAM
+.aws-sam/
