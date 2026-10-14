@@ -1,0 +1,21 @@
+# ---------------------------------------------------------------------------
+# Configuração do DVC — remote de dados em Amazon S3 (R9.1, R10.6).
+#
+# O remote padrão aponta para o MESMO bucket S3 do artefato do modelo
+# (ver `ModelBucketName` em samconfig.toml / template.yaml): o S3 é a fonte
+# única de verdade — versiona o dataset (via DVC) e serve o `model.onnx` para
+# a Lambda em runtime. Os dados do DVC ficam sob o prefixo `/dvc` do bucket.
+#
+# `url` usa o MESMO placeholder de bucket do samconfig.toml
+# (`triagem-laudos-model-dev-change-me`). Troque pelo nome real do bucket
+# (globalmente único) antes de `dvc push`/`dvc pull` — mantenha-o alinhado ao
+# `ModelBucketName` do deploy SAM.
+#
+# NÃO há credenciais AWS aqui: a autenticação é resolvida pelo ambiente do
+# operador (perfil da AWS CLI / SSO / variáveis de ambiente), nunca commitada.
+# ---------------------------------------------------------------------------
+[core]
+    analytics = false
+    remote = storage
+['remote "storage"']
+    url = s3://triagem-laudos-model-dev-change-me/dvc

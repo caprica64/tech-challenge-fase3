@@ -1,0 +1,7 @@
+stages:
+  prepare_dataset:
+    cmd: python -m src.data.prepare_dataset
+    deps:
+    - src/data/prepare_dataset.py
+    outs:
+    - data/laudos.csv
