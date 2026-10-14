@@ -155,20 +155,20 @@ flowchart TD
   - Ajustar `src/api/main.py`/`inference.py` para carregar `model.onnx` do S3 no cold start (escopo global) usando env vars `MODEL_BUCKET`, `MODEL_KEY`, `MODEL_FORMAT`
   - _Requisitos: R3.1, R10.3, R10.4, R10.6_
 
-- [-] 15. Criar a infraestrutura como código (AWS SAM) parametrizada
+- [x] 15. Criar a infraestrutura como código (AWS SAM) parametrizada
   - Criar `template.yaml`: `Serverless::Function` (PackageType Image), HttpApi, bucket S3, IAM Role (`s3:GetObject` + logs); `Parameters` (ModelBucketName, ModelKey, Stage, MemorySize, Timeout)
   - Criar `samconfig.toml` com parâmetros por ambiente; sem valores hardcoded
   - _Requisitos: R10.3, R10.4, R10.6, R10.8_
 
-- [~] 16. Configurar DVC com remote S3
+- [x] 16. Configurar DVC com remote S3
   - Inicializar DVC, criar `dvc.yaml` (estágio `prepare_dataset`), rastrear `data/laudos.csv`, configurar `.dvc/config` com remote S3 (mesmo bucket do modelo)
   - _Requisitos: R9.1, R10.6_
 
-- [~] 17. Finalizar o README e documentação de entrega
+- [x] 17. Finalizar o README e documentação de entrega
   - Documentar: arquitetura, como rodar local, stack de monitoramento, pipeline, deploy SAM (`sam build`/`sam deploy --guided`), teardown (`sam delete`), parametrização, resultados de benchmark, link do vídeo STAR e lições aprendidas
   - _Requisitos: R8.3, R8.5, R11.4, R11.5, R11.6, R10.1_
 
-- [~] 18. Garantir qualidade do repositório e versionamento
+- [x] 18. Garantir qualidade do repositório e versionamento
   - Revisar estrutura, aplicar commits semânticos (Conventional Commits) e confirmar que lint/bandit/testes passam localmente
   - _Requisitos: R8.1, R8.2, R8.4_
 
