@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Triagem de Laudos Médicos — Infraestrutura como Código (AWS SAM) — R10.
+  Provisiona uma função Lambda (imagem de container) que serve a API FastAPI
+  via mangum, exposta por um HTTP API, com um bucket S3 para o artefato do
+  modelo (model.onnx) e uma IAM Role (gerada pelo SAM) com permissão de
+  s3:GetObject no bucket e logs no CloudWatch. Todos os valores configuráveis
+  são declarados em Parameters (sem hardcoding — R10.8) e definidos por
+  ambiente em samconfig.toml.
+
+# ---------------------------------------------------------------------------
+# Parâmetros (R10.8) — nenhum valor fixo no código; tudo é parametrizável e
+# sobreposto por ambiente via samconfig.toml (parameter_overrides).
+# ---------------------------------------------------------------------------
+Parameters:
+  ModelBucketName:
+    Type: String
+    Description: >-
+      Nome do bucket S3 que armazena o artefato do modelo (model.onnx) e serve
+      também como remote do DVC. O bucket é criado por este stack.
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    ConstraintDescription: >-
+      Deve ser um nome de bucket S3 válido (3-63 chars, minúsculas, números,
+      ponto e hífen).
+
+  ModelKey:
+    Type: String
+    Default: model.onnx
+    Description: >-
+      Chave (key) do objeto do modelo dentro do bucket S3. Lida pela aplicação
+      via a variável de ambiente MODEL_KEY.
+
+  ModelFormat:
+    Type: String
+    Default: onnx
+    AllowedValues:
+      - onnx
+      - pkl
+    Description: >-
+      Formato do artefato do modelo (onnx ou pkl). Lido pela aplicação via a
+      variável de ambiente MODEL_FORMAT.
+
+  Stage:
+    Type: String
+    Default: dev
+    Description: Nome do stage do HTTP API e sufixo lógico de ambiente.
+
+  MemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+    Description: Memória (MB) alocada para a função Lambda.
+
+  Timeout:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 900
+    Description: Timeout (segundos) da função Lambda.
+
+# ---------------------------------------------------------------------------
+# Globals — propriedades padrão aplicadas à função; valores vêm de Parameters.
+# ---------------------------------------------------------------------------
+Globals:
+  Function:
+    MemorySize: !Ref MemorySize
+    Timeout: !Ref Timeout
+
+Resources:
+  # -------------------------------------------------------------------------
+  # Bucket S3 do artefato do modelo (model.onnx) — também remote do DVC.
+  # O modelo deve ser enviado após o deploy via `dvc push` ou
+  # `aws s3 cp models/model.onnx s3://<ModelBucketName>/<ModelKey>`.
+  # -------------------------------------------------------------------------
+  ModelBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ModelBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # -------------------------------------------------------------------------
+  # Função de inferência (API FastAPI via mangum) — imagem de container.
+  # `sam build` constrói a imagem a partir de Dockerfile.lambda (Metadata).
+  # A IAM Role é gerada pelo SAM: AWSLambdaBasicExecutionRole (logs no
+  # CloudWatch) + S3ReadPolicy (s3:GetObject no bucket do modelo).
+  # -------------------------------------------------------------------------
+  TriageFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile.lambda
+      DockerContext: .
+      DockerTag: triagem-laudos
+    Properties:
+      PackageType: Image
+      Environment:
+        Variables:
+          MODEL_BUCKET: !Ref ModelBucketName
+          MODEL_KEY: !Ref ModelKey
+          MODEL_FORMAT: !Ref ModelFormat
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ModelBucketName
+      Events:
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TriageHttpApi
+            Path: /
+            Method: ANY
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TriageHttpApi
+            Path: /{proxy+}
+            Method: ANY
+
+  # -------------------------------------------------------------------------
+  # HTTP API — expõe /predict, /health, /metrics (roteados pelo FastAPI via
+  # o proxy catch-all acima). O stage usa o parâmetro Stage.
+  # -------------------------------------------------------------------------
+  TriageHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+
+Outputs:
+  ApiEndpoint:
+    Description: URL base do HTTP API (sufixada pelo StageName).
+    Value: !Sub "https://${TriageHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  FunctionName:
+    Description: Nome da função Lambda de inferência.
+    Value: !Ref TriageFunction
+
+  ModelBucketNameOutput:
+    Description: Nome do bucket S3 que armazena o artefato do modelo.
+    Value: !Ref ModelBucket

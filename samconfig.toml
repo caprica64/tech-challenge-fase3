@@ -1,0 +1,56 @@
+# ---------------------------------------------------------------------------
+# Configuração de deploy do AWS SAM — parâmetros por ambiente (R10.8).
+#
+# Este arquivo guarda APENAS valores de configuração de deploy e os
+# `parameter_overrides` do template.yaml por ambiente. NÃO contém segredos nem
+# credenciais AWS — estas são resolvidas pelo ambiente do operador (perfil da
+# AWS CLI / SSO), nunca commitadas no repositório.
+#
+# Os valores abaixo são placeholders VÁLIDOS e devem ser sobrescritos pelo
+# operador (edite diretamente ou use `sam deploy --guided`). Em especial,
+# `ModelBucketName` precisa ser globalmente único no S3 — troque o sufixo.
+#
+# Uso:
+#   sam build
+#   sam deploy                       # usa [default] (ambiente dev)
+#   sam deploy --config-env prod     # usa [prod]
+# ---------------------------------------------------------------------------
+version = 0.1
+
+# Ambiente padrão (dev).
+[default.global.parameters]
+stack_name = "triagem-laudos-dev"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_image_repos = true
+image_repositories = []
+parameter_overrides = "ModelBucketName=\"triagem-laudos-model-dev-change-me\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"dev\" MemorySize=\"1024\" Timeout=\"30\""
+
+[default.delete.parameters]
+region = "us-east-1"
+
+# Ambiente de produção (prod).
+[prod.global.parameters]
+stack_name = "triagem-laudos-prod"
+
+[prod.build.parameters]
+cached = true
+parallel = true
+
+[prod.deploy.parameters]
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_image_repos = true
+image_repositories = []
+parameter_overrides = "ModelBucketName=\"triagem-laudos-model-prod-change-me\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"prod\" MemorySize=\"2048\" Timeout=\"30\""
+
+[prod.delete.parameters]
+region = "us-east-1"
