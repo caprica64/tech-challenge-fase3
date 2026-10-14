@@ -21,6 +21,10 @@ prometheus-client==0.21.1
 
 # Versionamento de dados (remote S3)
 dvc[s3]==3.59.1
+# dvc declara `pathspec>=0.10.3` sem teto; o pip resolveria para a linha 1.x,
+# que quebra o DVC. Fixamos a faixa 0.x (compatível com dvc/scmrepo) para que
+# o install fresco seja reprodutível. 0.12.1 é a versão validada localmente.
+pathspec>=0.10.3,<1.0
 
 # Qualidade e testes
 pytest==8.3.4
