@@ -31,5 +31,8 @@ pathspec>=0.10.3,<1.0
 
 # Qualidade e testes
 pytest==8.3.4
+# httpx é requerido pelo starlette.testclient.TestClient (usado em
+# tests/test_api*.py). Sem ele a coleção do pytest falha no CI.
+httpx==0.28.1
 ruff==0.9.2
 bandit==1.8.2
