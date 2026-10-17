@@ -31,7 +31,7 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_image_repos = true
 image_repositories = []
-parameter_overrides = "ModelBucketName=\"triagem-laudos-model-dev-change-me\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"dev\" MemorySize=\"1024\" Timeout=\"30\""
+parameter_overrides = "ModelBucketName=\"triagem-laudos-model-dev-caprica\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"dev\" MemorySize=\"1024\" Timeout=\"30\""
 
 [default.delete.parameters]
 region = "us-east-1"
