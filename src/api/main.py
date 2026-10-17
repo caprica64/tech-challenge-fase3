@@ -31,6 +31,7 @@ Tratamento de erros (tarefa 4.2, R2.4/R2.5):
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 
@@ -186,7 +187,14 @@ def health(request: Request) -> HealthResponse:
 try:
     from mangum import Mangum
 
-    handler = Mangum(app, lifespan="auto")
+    # Em um HTTP API com stage nomeado (ex.: /dev, /prod), o API Gateway inclui
+    # o nome do stage no path repassado ao Lambda. Sem removê-lo, o FastAPI
+    # veria /dev/health em vez de /health e responderia 404. O stage é injetado
+    # pelo SAM na env var STAGE (ver template.yaml); montamos o base_path a
+    # partir dela — dinâmico, sem hardcode, e inerte localmente (STAGE ausente).
+    _stage = os.environ.get("STAGE", "").strip().strip("/")
+    _base_path = f"/{_stage}" if _stage and _stage != "$default" else None
+    handler = Mangum(app, lifespan="auto", api_gateway_base_path=_base_path)
 except ImportError:  # pragma: no cover - mangum é dependência de runtime (Lambda)
     # Em ambientes locais/CI sem ``mangum`` instalado, a API continua rodando
     # normalmente via Uvicorn; o ``handler`` da Lambda simplesmente não existe.

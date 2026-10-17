@@ -29,9 +29,10 @@ parallel = true
 region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
-resolve_image_repos = true
-image_repositories = []
-parameter_overrides = "ModelBucketName=\"triagem-laudos-model-dev-caprica\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"dev\" MemorySize=\"1024\" Timeout=\"30\""
+image_repositories = ["TriageFunction=861211186414.dkr.ecr.us-east-1.amazonaws.com/triagemlaudosdev5e9a4824/triagefunctioncc023aa1repo"]
+parameter_overrides = "ModelBucketName=\"triagem-laudos-model-dev-caprica\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"dev\" MemorySize=\"3008\" Timeout=\"30\""
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-abwwmtbtk1rl"
+s3_prefix = "triagem-laudos-dev"
 
 [default.delete.parameters]
 region = "us-east-1"
@@ -49,7 +50,6 @@ region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_image_repos = true
-image_repositories = []
 parameter_overrides = "ModelBucketName=\"triagem-laudos-model-prod-change-me\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"prod\" MemorySize=\"2048\" Timeout=\"30\""
 
 [prod.delete.parameters]
