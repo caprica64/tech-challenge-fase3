@@ -235,6 +235,8 @@ models/*.json
 # Resultados de benchmark gerados
 benchmark_results.md
 benchmark_results.json
+load_test.log
+load_test_results.json
 
 # DVC — cache local e temporários (config é versionado)
 /.dvc/cache

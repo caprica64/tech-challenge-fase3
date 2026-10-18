@@ -394,6 +394,32 @@ Benchmark de latência e acurácia comparando o modelo **original (`.pkl`)** vs.
 (`.onnx`)**, medido com `scripts/benchmark.py` sobre 1000 requisições cronometradas (warmup
 de 50). Os números abaixo reproduzem `benchmark_results.md`.
 
+Há **dois scripts complementares** de medição:
+
+- `scripts/benchmark.py` — mede o modelo **em processo** (carrega o `.pkl`/`.onnx`
+  diretamente) e compara original vs. otimizado; gera `benchmark_results.{json,md}`.
+- `scripts/load_test.py` — dispara **N inferências `POST /predict` em sequência contra a
+  API em execução**, medindo a latência end-to-end (inclui rede/HTTP) e gerando um log por
+  requisição. Como bate no endpoint real, também **popula as métricas Prometheus** (`/metrics`)
+  e os logs do servidor — útil para demonstrar os painéis do Grafana. Usa só a biblioteca
+  padrão, então funciona contra o Compose local ou a URL publicada na AWS.
+
+```bash
+# local (API do docker-compose na porta 8000)
+python scripts/load_test.py --url http://localhost:8000 --n 500
+
+# contra a API publicada (inclua o stage no path)
+python scripts/load_test.py --url "$API" --n 200
+
+# laudos customizados (um por linha) e arquivos de saída
+python scripts/load_test.py --input laudos.txt \
+  --log-file run.log --summary-json run.json
+```
+
+Saída: um resumo no console (p50/p95/média, status, distribuição de classes), um log
+tab-separado por requisição (`load_test.log`) e um resumo estruturado (`load_test_results.json`)
+— ambos artefatos gerados (gitignored).
+
 ### Latência (ms)
 
 | Métrica | Original (.pkl) | Otimizado (.onnx) | Ganho |
@@ -458,7 +484,7 @@ objetivo do projeto (ciclo de MLOps de baixa latência) é atendido sem comprome
 │   ├── Dockerfile  # imagem Airflow + libs de ML do projeto
 │   └── docker-compose.yml  # stack local do Airflow (demo da DAG)
 ├── monitoring/     # prometheus.yml + provisioning e dashboards do Grafana
-├── scripts/        # benchmark.py
+├── scripts/        # benchmark.py (in-process) e load_test.py (driver HTTP)
 ├── tests/          # testes de API e inferência
 ├── models/         # artefatos (model.pkl / model.onnx — gitignored)
 ├── data/           # laudos.csv (versionado via DVC)
