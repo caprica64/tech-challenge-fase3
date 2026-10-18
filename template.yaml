@@ -107,6 +107,9 @@ Resources:
           MODEL_BUCKET: !Ref ModelBucketName
           MODEL_KEY: !Ref ModelKey
           MODEL_FORMAT: !Ref ModelFormat
+          # Nome do stage do HTTP API; o handler (mangum) usa para remover o
+          # prefixo de path do stage (ex.: /dev) e casar as rotas do FastAPI.
+          STAGE: !Ref Stage
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ModelBucketName

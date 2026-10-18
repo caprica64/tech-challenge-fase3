@@ -54,8 +54,16 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from src.model.inference import Classifier
-from src.model.train import (
+# Permite executar tanto como módulo (`python -m scripts.benchmark`) quanto
+# como arquivo (`python scripts/benchmark.py`). No segundo caso, o diretório
+# `scripts/` entra no sys.path em vez da raiz do projeto, e o pacote `src`
+# não seria encontrado — por isso garantimos a raiz do projeto no sys.path.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from src.model.inference import Classifier  # noqa: E402 (import após ajuste de sys.path)
+from src.model.train import (  # noqa: E402 (import após ajuste de sys.path)
     DEFAULT_DATA_PATH,
     DEFAULT_MODEL_DIR,
     DEFAULT_TEST_SIZE,

@@ -14,7 +14,10 @@ skl2onnx==1.18.0
 # Importado de forma tardia (lazy) em src/model/inference.py: só é usado quando
 # MODEL_BUCKET está definido, de modo que ambientes locais sem este pacote não
 # são afetados. Fica pinado para a imagem Lambda (Dockerfile.lambda) e testes.
-boto3==1.35.99
+# A versão 1.43.106 é a que o pip resolve em conjunto com `dvc[s3]==3.59.1`
+# (aiobotocore 3.9.2 exige botocore 1.43.x); pins antigos (1.35.x) conflitavam
+# com o botocore que o dvc[s3] requer e quebravam o `pip install` no CI.
+boto3==1.43.106
 
 # Observabilidade
 prometheus-client==0.21.1
@@ -28,5 +31,8 @@ pathspec>=0.10.3,<1.0
 
 # Qualidade e testes
 pytest==8.3.4
+# httpx é requerido pelo starlette.testclient.TestClient (usado em
+# tests/test_api*.py). Sem ele a coleção do pytest falha no CI.
+httpx==0.28.1
 ruff==0.9.2
 bandit==1.8.2

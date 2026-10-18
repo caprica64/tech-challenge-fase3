@@ -13,6 +13,16 @@
 # ----------------------------------------------------------------------------
 FROM python:3.11-slim AS runtime
 
+# O grafo ONNX exportado (TfidfVectorizer -> StringNormalizer) constrói o
+# locale en_US.UTF-8 ao inicializar a sessão do ONNX Runtime. A imagem slim
+# só traz o locale C/POSIX, então sem isto o carregamento do modelo falha
+# (/predict retornaria 503). Instalamos e geramos o locale UTF-8.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends locales \
+    && sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen \
+    && locale-gen \
+    && rm -rf /var/lib/apt/lists/*
+
 # Boas práticas de runtime Python em container:
 #   - não gerar arquivos .pyc;
 #   - stdout/stderr sem buffer (logs imediatos);
@@ -23,7 +33,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONPATH=/app \
     PORT=8000 \
-    MODEL_DIR=/app/models
+    MODEL_DIR=/app/models \
+    LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
 
 WORKDIR /app
 

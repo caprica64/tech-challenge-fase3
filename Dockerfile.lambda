@@ -3,8 +3,12 @@
 # Imagem AWS Lambda (runtime de container) da API de triagem de laudos (R3.1, R10).
 #
 # Diferenças em relação ao Dockerfile local:
-#   - Base oficial da AWS para Lambda Python 3.11 (inclui o Lambda Runtime
-#     Interface Client), em vez de python:3.11-slim + Uvicorn.
+#   - Base oficial da AWS para Lambda Python 3.12 (inclui o Lambda Runtime
+#     Interface Client), em vez de python:3.11-slim + Uvicorn. Usamos a 3.12
+#     (Amazon Linux 2023, glibc 2.34) porque a base da 3.11 é Amazon Linux 2
+#     (glibc 2.26), cuja glibc é antiga demais para as wheels manylinux_2_28
+#     do onnxruntime 1.20.1. O código tem como alvo Python >=3.11 e não usa
+#     nada específico de 3.11, então roda igual na 3.12.
 #   - A MESMA aplicação FastAPI roda via o adaptador ASGI `mangum`
 #     (handler = Mangum(app) em src/api/main.py).
 #   - O modelo NÃO é embutido na imagem: ele é baixado do Amazon S3 em runtime,
@@ -15,7 +19,14 @@
 # O build e o push desta imagem para o ECR são conduzidos pelo AWS SAM
 # (`sam build` / `sam deploy`) — ver template.yaml (tarefa 15).
 # ----------------------------------------------------------------------------
-FROM public.ecr.aws/lambda/python:3.11
+FROM public.ecr.aws/lambda/python:3.12
+
+# O grafo ONNX (TfidfVectorizer -> StringNormalizer) constrói o locale
+# en_US.UTF-8 ao inicializar a sessão do ONNX Runtime no cold start. A base
+# oficial da Lambda (Amazon Linux 2023) JÁ inclui os dados do locale en_US.utf8,
+# então basta apontar as env vars de locale para ele (sem instalar pacotes).
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
 
 # Instala as dependências primeiro para aproveitar o cache de camadas: só é
 # refeito quando requirements.txt muda. LAMBDA_TASK_ROOT é o diretório raiz do
