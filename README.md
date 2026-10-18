@@ -247,6 +247,34 @@ sam deploy
 
 A URL do HTTP API é exibida nos `Outputs` do stack (`ApiEndpoint`).
 
+### Testar a API publicada
+
+Com o stack implantado, use a URL do `ApiEndpoint` (o path inclui o stage,
+ex.: `/dev`). Exemplo com o endpoint atual de ambiente de desenvolvimento:
+
+```bash
+API="https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev"
+
+# Health check
+curl -s "$API/health"
+# -> {"status":"ok","model_loaded":true,"model_version":"onnx-v1"}
+
+# Predição
+curl -s -X POST "$API/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Patient presents with acute chest pain and shortness of breath"}'
+
+# Métricas Prometheus (text/plain)
+curl -s "$API/metrics"
+```
+
+> URL de health direta (dev): https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev/health
+>
+> URL de métricas direta (dev): https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev/metrics
+>
+> O endpoint acima é de uma implantação de desenvolvimento e pode mudar a
+> cada novo deploy; sempre confira o `ApiEndpoint` nos `Outputs` do stack.
+
 ### Upload do modelo para o S3
 
 A Lambda carrega `model.onnx` do S3 no cold start, então o artefato precisa estar no bucket
