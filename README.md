@@ -404,6 +404,37 @@ Há **dois scripts complementares** de medição:
   e os logs do servidor — útil para demonstrar os painéis do Grafana. Usa só a biblioteca
   padrão, então funciona contra o Compose local ou a URL publicada na AWS.
 
+#### Rodar o benchmark em processo (`scripts/benchmark.py`)
+
+Pré-requisitos: ter os artefatos em `models/`. O `.pkl` vem do treino e o
+`.onnx` da exportação (necessário para a comparação original vs. otimizado):
+
+```bash
+python -m src.model.train         # gera models/model.pkl
+python -m src.model.export_onnx   # gera models/model.onnx
+```
+
+Executar o benchmark (grava `benchmark_results.json` e `benchmark_results.md`):
+
+```bash
+# comparação completa .pkl vs .onnx (1000 requisições, warmup 50 — padrão)
+python -m scripts.benchmark
+
+# ajustar volume de requisições / aquecimento
+python -m scripts.benchmark --n 500 --warmup 50
+
+# medir só o baseline (.pkl), sem comparar com o ONNX
+python -m scripts.benchmark --baseline-only
+
+# apenas latência, pulando a avaliação de accuracy/F1
+python -m scripts.benchmark --skip-accuracy
+```
+
+> Também funciona como arquivo: `python scripts/benchmark.py ...` (o script
+> ajusta o `sys.path` para resolver o pacote `src`).
+
+#### Rodar o load-test HTTP (`scripts/load_test.py`)
+
 ```bash
 # local (API do docker-compose na porta 8000)
 python scripts/load_test.py --url http://localhost:8000 --n 500
