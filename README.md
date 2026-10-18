@@ -268,6 +268,27 @@ curl -s -X POST "$API/predict" \
 curl -s "$API/metrics"
 ```
 
+Exemplos de `/predict` por classe de urgência (os mesmos laudos usados nos
+testes de inferência, um por classe):
+
+```bash
+# normal — acompanhamento de rotina, achados dentro dos limites normais
+curl -s -X POST "$API/predict" -H "Content-Type: application/json" \
+  -d '{"text": "Routine follow-up for stable chronic condition. Findings within normal limits."}'
+
+# atencao — quadro que requer avaliação e monitoramento adicionais
+curl -s -X POST "$API/predict" -H "Content-Type: application/json" \
+  -d '{"text": "Persistent abdominal pain that warrants further evaluation and monitoring."}'
+
+# urgente — dor torácica aguda com sinais de falência de órgão
+curl -s -X POST "$API/predict" -H "Content-Type: application/json" \
+  -d '{"text": "Patient presents with acute crushing chest pain and signs of organ failure."}'
+```
+
+> A classe prevista depende do modelo treinado; os textos acima são
+> representativos de cada nível, mas o `label` retornado pode variar conforme
+> o dataset e o treino correntes.
+
 > URL de health direta (dev): https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev/health
 >
 > URL de métricas direta (dev): https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev/metrics
