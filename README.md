@@ -177,6 +177,65 @@ os painéis aparecem automaticamente ao subir a stack. O dashboard tem no mínim
 A API é instrumentada com `prometheus-client` e expõe as métricas em `GET /metrics`
 (counters de requisições e predições; histogramas de duração HTTP e de inferência do modelo).
 
+### Testar gráficos no Prometheus
+
+Com a stack no ar, siga estes passos para ver os gráficos desenhando:
+
+1. **Gere tráfego** — as séries só existem após a API receber requisições. Use o
+   driver de load-test (ver seção de benchmark), repetindo para acumular pontos:
+
+   ```bash
+   python scripts/load_test.py --url http://localhost:8000 --n 500
+   ```
+
+   As queries com `rate(...[5m])` precisam de tráfego **contínuo e recente**: um
+   burst único antigo faz o `rate()` cair a zero (gráfico achatado). Para ver as
+   linhas "vivas", mantenha tráfego rodando enquanto observa:
+
+   ```bash
+   while true; do python scripts/load_test.py --url http://localhost:8000 --n 50 >/dev/null 2>&1; sleep 2; done
+   ```
+
+   Para apenas confirmar que há dados (sem tráfego novo), prefira queries sem
+   `rate`, como `sum(http_requests_total)` ou `sum by (label) (prediction_total)`.
+
+2. **Confira o scrape** em http://localhost:9090 → **Status → Targets**: o alvo
+   `triagem-api` (`api:8000`) deve estar **UP**. Se estiver DOWN, o problema é de
+   rede/scrape, não das queries.
+
+3. **Rode as queries** na aba **Graph** (cole a expressão e clique em *Execute*). As
+   mesmas expressões alimentam o dashboard do Grafana (`monitoring/grafana/dashboards/
+   triagem.json`):
+
+   ```promql
+   # Taxa de requisições por status (janela 5m)
+   sum by (status_code) (rate(http_requests_total[5m]))
+
+   # Total acumulado de requisições
+   sum(http_requests_total)
+
+   # Latência p95 das requisições HTTP (meta < 100 ms)
+   histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+
+   # Latência p50
+   histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+
+   # Taxa de erro 5xx
+   sum(rate(http_requests_total{status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1)
+
+   # Distribuição das classes previstas pelo modelo
+   sum by (label) (prediction_total)
+
+   # Latência isolada da inferência (p95), sem overhead de HTTP
+   histogram_quantile(0.95, sum by (le) (rate(model_inference_duration_seconds_bucket[5m])))
+   ```
+
+> Métricas de duração são *histograms*: expõem séries `_bucket`/`_sum`/`_count`. Para
+> percentis use sempre `histogram_quantile(...)` sobre `rate(..._bucket[5m])`. Counters
+> (`http_requests_total`, `prediction_total`) só crescem, por isso usamos `rate()`/`sum()`
+> para ver o ritmo. Validar estas queries no Prometheus confirma que os painéis do
+> Grafana (http://localhost:3000) também funcionarão.
+
 ## Pipeline CI/CD e DAG do Airflow
 
 ### CI/CD (GitHub Actions)
@@ -213,13 +272,38 @@ load_data → preprocess → train → evaluate → export_onnx → save_artifac
 - Em caso de sucesso, `save_artifacts` persiste um novo artefato (`models/model.pkl` +
   `models/metrics.json`).
 
-Para disparar manualmente (em um ambiente Airflow com a pasta `airflow/dags/` montada):
+#### Demonstrar localmente (Docker Compose)
+
+A pasta `airflow/` traz uma stack local pronta (`airflow/docker-compose.yml` +
+`airflow/Dockerfile`) para **demonstrar a DAG de ponta a ponta** com a UI do
+Airflow. A imagem estende o Airflow oficial e instala as libs de ML do projeto
+(scikit-learn, pandas, onnx/onnxruntime, skl2onnx) para que os callables da DAG
+— que reutilizam `src/model` e `src/data` — rodem no worker. A raiz do projeto é
+montada no container, então os artefatos gerados (`models/model.pkl`,
+`models/metrics.json`) aparecem no host.
 
 ```bash
-airflow dags trigger train_triage_model
+cd airflow
+docker compose up --build        # sobe postgres + init + webserver + scheduler
+# UI: http://localhost:8080  (login: admin / admin)
 ```
 
-Ou pela UI do Airflow: localize a DAG `train_triage_model` e acione o trigger manual.
+Na UI, localize a DAG `train_triage_model`, ative-a e acione o **Trigger DAG**;
+acompanhe o grafo e os logs por tarefa. Pela linha de comando (dentro de um dos
+containers do Airflow) o equivalente é:
+
+```bash
+docker compose exec airflow-scheduler airflow dags trigger train_triage_model
+```
+
+Encerrar a stack (use `-v` para também apagar o metadado do Postgres):
+
+```bash
+docker compose down
+```
+
+> Sem dados em `data/laudos.csv`, a tarefa `load_data` gera o dataset sintético
+> determinístico automaticamente — a demo funciona offline.
 
 ## Deploy na AWS (SAM)
 
@@ -246,6 +330,55 @@ sam deploy
 ```
 
 A URL do HTTP API é exibida nos `Outputs` do stack (`ApiEndpoint`).
+
+### Testar a API publicada
+
+Com o stack implantado, use a URL do `ApiEndpoint` (o path inclui o stage,
+ex.: `/dev`). Exemplo com o endpoint atual de ambiente de desenvolvimento:
+
+```bash
+API="https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev"
+
+# Health check
+curl -s "$API/health"
+# -> {"status":"ok","model_loaded":true,"model_version":"onnx-v1"}
+
+# Predição
+curl -s -X POST "$API/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Patient presents with acute chest pain and shortness of breath"}'
+
+# Métricas Prometheus (text/plain)
+curl -s "$API/metrics"
+```
+
+Exemplos de `/predict` por classe de urgência (os mesmos laudos usados nos
+testes de inferência, um por classe):
+
+```bash
+# normal — acompanhamento de rotina, achados dentro dos limites normais
+curl -s -X POST "$API/predict" -H "Content-Type: application/json" \
+  -d '{"text": "Routine follow-up for stable chronic condition. Findings within normal limits."}'
+
+# atencao — quadro que requer avaliação e monitoramento adicionais
+curl -s -X POST "$API/predict" -H "Content-Type: application/json" \
+  -d '{"text": "Persistent abdominal pain that warrants further evaluation and monitoring."}'
+
+# urgente — dor torácica aguda com sinais de falência de órgão
+curl -s -X POST "$API/predict" -H "Content-Type: application/json" \
+  -d '{"text": "Patient presents with acute crushing chest pain and signs of organ failure."}'
+```
+
+> A classe prevista depende do modelo treinado; os textos acima são
+> representativos de cada nível, mas o `label` retornado pode variar conforme
+> o dataset e o treino correntes.
+
+> URL de health direta (dev): https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev/health
+>
+> URL de métricas direta (dev): https://544wv6xtq1.execute-api.us-east-1.amazonaws.com/dev/metrics
+>
+> O endpoint acima é de uma implantação de desenvolvimento e pode mudar a
+> cada novo deploy; sempre confira o `ApiEndpoint` nos `Outputs` do stack.
 
 ### Upload do modelo para o S3
 
@@ -320,6 +453,63 @@ Benchmark de latência e acurácia comparando o modelo **original (`.pkl`)** vs.
 (`.onnx`)**, medido com `scripts/benchmark.py` sobre 1000 requisições cronometradas (warmup
 de 50). Os números abaixo reproduzem `benchmark_results.md`.
 
+Há **dois scripts complementares** de medição:
+
+- `scripts/benchmark.py` — mede o modelo **em processo** (carrega o `.pkl`/`.onnx`
+  diretamente) e compara original vs. otimizado; gera `benchmark_results.{json,md}`.
+- `scripts/load_test.py` — dispara **N inferências `POST /predict` em sequência contra a
+  API em execução**, medindo a latência end-to-end (inclui rede/HTTP) e gerando um log por
+  requisição. Como bate no endpoint real, também **popula as métricas Prometheus** (`/metrics`)
+  e os logs do servidor — útil para demonstrar os painéis do Grafana. Usa só a biblioteca
+  padrão, então funciona contra o Compose local ou a URL publicada na AWS.
+
+#### Rodar o benchmark em processo (`scripts/benchmark.py`)
+
+Pré-requisitos: ter os artefatos em `models/`. O `.pkl` vem do treino e o
+`.onnx` da exportação (necessário para a comparação original vs. otimizado):
+
+```bash
+python -m src.model.train         # gera models/model.pkl
+python -m src.model.export_onnx   # gera models/model.onnx
+```
+
+Executar o benchmark (grava `benchmark_results.json` e `benchmark_results.md`):
+
+```bash
+# comparação completa .pkl vs .onnx (1000 requisições, warmup 50 — padrão)
+python -m scripts.benchmark
+
+# ajustar volume de requisições / aquecimento
+python -m scripts.benchmark --n 500 --warmup 50
+
+# medir só o baseline (.pkl), sem comparar com o ONNX
+python -m scripts.benchmark --baseline-only
+
+# apenas latência, pulando a avaliação de accuracy/F1
+python -m scripts.benchmark --skip-accuracy
+```
+
+> Também funciona como arquivo: `python scripts/benchmark.py ...` (o script
+> ajusta o `sys.path` para resolver o pacote `src`).
+
+#### Rodar o load-test HTTP (`scripts/load_test.py`)
+
+```bash
+# local (API do docker-compose na porta 8000)
+python scripts/load_test.py --url http://localhost:8000 --n 500
+
+# contra a API publicada (inclua o stage no path)
+python scripts/load_test.py --url "$API" --n 200
+
+# laudos customizados (um por linha) e arquivos de saída
+python scripts/load_test.py --input laudos.txt \
+  --log-file run.log --summary-json run.json
+```
+
+Saída: um resumo no console (p50/p95/média, status, distribuição de classes), um log
+tab-separado por requisição (`load_test.log`) e um resumo estruturado (`load_test_results.json`)
+— ambos artefatos gerados (gitignored).
+
 ### Latência (ms)
 
 | Métrica | Original (.pkl) | Otimizado (.onnx) | Ganho |
@@ -379,9 +569,12 @@ objetivo do projeto (ciclo de MLOps de baixa latência) é atendido sem comprome
 │   ├── api/        # FastAPI: main.py, schemas.py, metrics.py
 │   ├── model/      # train, inference, preprocessing, export_onnx
 │   └── data/       # prepare_dataset (público) e generate_dataset (sintético)
-├── airflow/dags/   # DAG train_triage_model
+├── airflow/        # DAG train_triage_model + stack de demo (compose + Dockerfile)
+│   ├── dags/       # DAG train_triage_model
+│   ├── Dockerfile  # imagem Airflow + libs de ML do projeto
+│   └── docker-compose.yml  # stack local do Airflow (demo da DAG)
 ├── monitoring/     # prometheus.yml + provisioning e dashboards do Grafana
-├── scripts/        # benchmark.py
+├── scripts/        # benchmark.py (in-process) e load_test.py (driver HTTP)
 ├── tests/          # testes de API e inferência
 ├── models/         # artefatos (model.pkl / model.onnx — gitignored)
 ├── data/           # laudos.csv (versionado via DVC)

@@ -235,6 +235,8 @@ models/*.json
 # Resultados de benchmark gerados
 benchmark_results.md
 benchmark_results.json
+load_test.log
+load_test_results.json
 
 # DVC — cache local e temporários (config é versionado)
 /.dvc/cache
@@ -243,3 +245,6 @@ benchmark_results.json
 
 # AWS SAM
 .aws-sam/
+
+# Airflow — logs gerados pela stack local de demo (airflow/docker-compose.yml)
+airflow/logs/
