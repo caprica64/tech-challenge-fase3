@@ -243,3 +243,6 @@ benchmark_results.json
 
 # AWS SAM
 .aws-sam/
+
+# Airflow — logs gerados pela stack local de demo (airflow/docker-compose.yml)
+airflow/logs/

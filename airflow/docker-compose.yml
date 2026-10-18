@@ -1,0 +1,112 @@
+# ----------------------------------------------------------------------------
+# Stack local do Apache Airflow para DEMONSTRAR a DAG train_triage_model (R5).
+#
+# Baseada no Docker Compose oficial do Airflow, enxuta para uma demo com o
+# LocalExecutor (menos serviços que o CeleryExecutor):
+#   - postgres          : metadado do Airflow.
+#   - airflow-init      : migra o DB e cria o usuário admin (roda uma vez).
+#   - airflow-webserver : UI em http://localhost:8080 (admin / admin).
+#   - airflow-scheduler : agenda/dispara as tarefas.
+#
+# Integração com o projeto:
+#   - A RAIZ do projeto é montada em /opt/airflow/project. A DAG resolve
+#     PROJECT_ROOT via parents[2] a partir de airflow/dags/, então apontamos a
+#     pasta de DAGs para /opt/airflow/project/airflow/dags — assim DATA_PATH e
+#     MODEL_DIR resolvem para data/ e models/ do projeto montado.
+#   - PYTHONPATH=/opt/airflow/project garante que `import src.model...` funcione
+#     no worker, independentemente do cwd.
+#   - data/ e models/ são do projeto montado, então os artefatos gerados pela
+#     DAG (model.pkl, metrics.json) aparecem no host automaticamente.
+#
+# Uso (a partir de airflow/):
+#   docker compose up --build
+#   # UI: http://localhost:8080  (admin / admin)
+#   # dispare a DAG train_triage_model e acompanhe o grafo/logs.
+#   docker compose down            # (-v para apagar o metadado do Postgres)
+# ----------------------------------------------------------------------------
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: triagem-airflow:local
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/project/airflow/dags
+    # Permite que os callables da DAG importem o pacote `src` do projeto.
+    PYTHONPATH: /opt/airflow/project
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "15"
+  volumes:
+    # Projeto inteiro (código src/, data/, models/, e a DAG em airflow/dags/).
+    - ..:/opt/airflow/project
+    # Logs do Airflow persistidos no host para inspeção.
+    - ./logs:/opt/airflow/logs
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    # Migra o DB e cria o usuário admin padrão da demo (admin/admin).
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin --password admin \
+          --firstname Admin --lastname User \
+          --role Admin --email admin@example.com || true
+    restart: on-failure
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-db:

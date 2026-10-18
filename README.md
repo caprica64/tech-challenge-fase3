@@ -213,13 +213,38 @@ load_data → preprocess → train → evaluate → export_onnx → save_artifac
 - Em caso de sucesso, `save_artifacts` persiste um novo artefato (`models/model.pkl` +
   `models/metrics.json`).
 
-Para disparar manualmente (em um ambiente Airflow com a pasta `airflow/dags/` montada):
+#### Demonstrar localmente (Docker Compose)
+
+A pasta `airflow/` traz uma stack local pronta (`airflow/docker-compose.yml` +
+`airflow/Dockerfile`) para **demonstrar a DAG de ponta a ponta** com a UI do
+Airflow. A imagem estende o Airflow oficial e instala as libs de ML do projeto
+(scikit-learn, pandas, onnx/onnxruntime, skl2onnx) para que os callables da DAG
+— que reutilizam `src/model` e `src/data` — rodem no worker. A raiz do projeto é
+montada no container, então os artefatos gerados (`models/model.pkl`,
+`models/metrics.json`) aparecem no host.
 
 ```bash
-airflow dags trigger train_triage_model
+cd airflow
+docker compose up --build        # sobe postgres + init + webserver + scheduler
+# UI: http://localhost:8080  (login: admin / admin)
 ```
 
-Ou pela UI do Airflow: localize a DAG `train_triage_model` e acione o trigger manual.
+Na UI, localize a DAG `train_triage_model`, ative-a e acione o **Trigger DAG**;
+acompanhe o grafo e os logs por tarefa. Pela linha de comando (dentro de um dos
+containers do Airflow) o equivalente é:
+
+```bash
+docker compose exec airflow-scheduler airflow dags trigger train_triage_model
+```
+
+Encerrar a stack (use `-v` para também apagar o metadado do Postgres):
+
+```bash
+docker compose down
+```
+
+> Sem dados em `data/laudos.csv`, a tarefa `load_data` gera o dataset sintético
+> determinístico automaticamente — a demo funciona offline.
 
 ## Deploy na AWS (SAM)
 
@@ -428,7 +453,10 @@ objetivo do projeto (ciclo de MLOps de baixa latência) é atendido sem comprome
 │   ├── api/        # FastAPI: main.py, schemas.py, metrics.py
 │   ├── model/      # train, inference, preprocessing, export_onnx
 │   └── data/       # prepare_dataset (público) e generate_dataset (sintético)
-├── airflow/dags/   # DAG train_triage_model
+├── airflow/        # DAG train_triage_model + stack de demo (compose + Dockerfile)
+│   ├── dags/       # DAG train_triage_model
+│   ├── Dockerfile  # imagem Airflow + libs de ML do projeto
+│   └── docker-compose.yml  # stack local do Airflow (demo da DAG)
 ├── monitoring/     # prometheus.yml + provisioning e dashboards do Grafana
 ├── scripts/        # benchmark.py
 ├── tests/          # testes de API e inferência
