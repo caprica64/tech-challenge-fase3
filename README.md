@@ -177,6 +177,65 @@ os painéis aparecem automaticamente ao subir a stack. O dashboard tem no mínim
 A API é instrumentada com `prometheus-client` e expõe as métricas em `GET /metrics`
 (counters de requisições e predições; histogramas de duração HTTP e de inferência do modelo).
 
+### Testar gráficos no Prometheus
+
+Com a stack no ar, siga estes passos para ver os gráficos desenhando:
+
+1. **Gere tráfego** — as séries só existem após a API receber requisições. Use o
+   driver de load-test (ver seção de benchmark), repetindo para acumular pontos:
+
+   ```bash
+   python scripts/load_test.py --url http://localhost:8000 --n 500
+   ```
+
+   As queries com `rate(...[5m])` precisam de tráfego **contínuo e recente**: um
+   burst único antigo faz o `rate()` cair a zero (gráfico achatado). Para ver as
+   linhas "vivas", mantenha tráfego rodando enquanto observa:
+
+   ```bash
+   while true; do python scripts/load_test.py --url http://localhost:8000 --n 50 >/dev/null 2>&1; sleep 2; done
+   ```
+
+   Para apenas confirmar que há dados (sem tráfego novo), prefira queries sem
+   `rate`, como `sum(http_requests_total)` ou `sum by (label) (prediction_total)`.
+
+2. **Confira o scrape** em http://localhost:9090 → **Status → Targets**: o alvo
+   `triagem-api` (`api:8000`) deve estar **UP**. Se estiver DOWN, o problema é de
+   rede/scrape, não das queries.
+
+3. **Rode as queries** na aba **Graph** (cole a expressão e clique em *Execute*). As
+   mesmas expressões alimentam o dashboard do Grafana (`monitoring/grafana/dashboards/
+   triagem.json`):
+
+   ```promql
+   # Taxa de requisições por status (janela 5m)
+   sum by (status_code) (rate(http_requests_total[5m]))
+
+   # Total acumulado de requisições
+   sum(http_requests_total)
+
+   # Latência p95 das requisições HTTP (meta < 100 ms)
+   histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+
+   # Latência p50
+   histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+
+   # Taxa de erro 5xx
+   sum(rate(http_requests_total{status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1)
+
+   # Distribuição das classes previstas pelo modelo
+   sum by (label) (prediction_total)
+
+   # Latência isolada da inferência (p95), sem overhead de HTTP
+   histogram_quantile(0.95, sum by (le) (rate(model_inference_duration_seconds_bucket[5m])))
+   ```
+
+> Métricas de duração são *histograms*: expõem séries `_bucket`/`_sum`/`_count`. Para
+> percentis use sempre `histogram_quantile(...)` sobre `rate(..._bucket[5m])`. Counters
+> (`http_requests_total`, `prediction_total`) só crescem, por isso usamos `rate()`/`sum()`
+> para ver o ritmo. Validar estas queries no Prometheus confirma que os painéis do
+> Grafana (http://localhost:3000) também funcionarão.
+
 ## Pipeline CI/CD e DAG do Airflow
 
 ### CI/CD (GitHub Actions)
