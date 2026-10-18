@@ -54,3 +54,37 @@ parameter_overrides = "ModelBucketName=\"triagem-laudos-model-prod-change-me\" M
 
 [prod.delete.parameters]
 region = "us-east-1"
+
+# ---------------------------------------------------------------------------
+# Ambiente de CI/CD (GitHub Actions) — deploy não-interativo via OIDC.
+#
+# Diferenças em relação a [default]:
+#   - resolve_image_repos = true  -> o SAM cria/gerencia o repositório ECR na
+#     conta assumida pela role OIDC (sem ARN específico de conta no repo).
+#   - resolve_s3 = true           -> o SAM cria/usa o bucket de origem gerenciado
+#     automaticamente (sem bucket hardcoded, funciona em conta limpa).
+#   - confirm_changeset = false   -> sem prompt interativo no runner.
+#   - fail_on_empty_changeset = false -> um push sem mudanças de infra não falha.
+#
+# ModelBucketName precisa ser globalmente único; ajuste o sufixo conforme a
+# conta de destino, ou mantenha alinhado ao bucket já existente no ambiente.
+# Credenciais vêm da role OIDC do workflow, nunca commitadas.
+# ---------------------------------------------------------------------------
+[ci.global.parameters]
+stack_name = "triagem-laudos-dev"
+
+[ci.build.parameters]
+cached = true
+parallel = true
+
+[ci.deploy.parameters]
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false
+resolve_image_repos = true
+resolve_s3 = true
+parameter_overrides = "ModelBucketName=\"triagem-laudos-model-dev-caprica\" ModelKey=\"model.onnx\" ModelFormat=\"onnx\" Stage=\"dev\" MemorySize=\"3008\" Timeout=\"30\""
+
+[ci.delete.parameters]
+region = "us-east-1"

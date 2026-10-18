@@ -142,3 +142,51 @@ jobs:
           tags: triagem-laudos-medicos:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # --------------------------------------------------------------------------
+  # deploy — AWS SAM deploy (SOMENTE em push na main).
+  #
+  # Autentica na AWS via GitHub OIDC (sem chaves de longa duração): assume a
+  # role cujo ARN está no secret AWS_DEPLOY_ROLE_ARN. Requer `id-token: write`.
+  # Só roda após lint, test e build passarem; o build já validou a imagem.
+  # Usa o config-env `ci` do samconfig.toml (não-interativo, resolve ECR/S3).
+  #
+  # Pré-requisitos (configurados UMA vez, fora deste repo):
+  #   - Provider OIDC do GitHub na conta AWS.
+  #   - IAM Role com trust para o repo/branch e permissões de deploy do SAM
+  #     (CloudFormation, Lambda, ECR, S3, API Gateway, IAM PassRole).
+  #   - Secret do repositório: AWS_DEPLOY_ROLE_ARN.
+  # --------------------------------------------------------------------------
+  deploy:
+    name: Deploy (sam)
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write      # necessário para o OIDC emitir o token
+      contents: read
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Instalar AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configurar credenciais AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: sam build
+        run: sam build --config-env ci
+
+      - name: sam deploy (não-interativo)
+        run: sam deploy --config-env ci --no-confirm-changeset --no-fail-on-empty-changeset
