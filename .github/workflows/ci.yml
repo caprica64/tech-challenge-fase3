@@ -179,6 +179,17 @@ jobs:
         with:
           use-installer: true
 
+      # DEBUG TEMPORÁRIO: imprime o claim `sub` do token OIDC para conferir
+      # o match com a trust policy da role. Não expõe o token (só o sub).
+      - name: Debug OIDC sub claim
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c 'import sys,json; print(json.load(sys.stdin)["value"])')
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
+          # pad base64url and decode
+          PAD=$(( (4 - ${#PAYLOAD} % 4) % 4 )); PAYLOAD="$PAYLOAD$(printf '=%.0s' $(seq 1 $PAD))"
+          echo "$PAYLOAD" | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); print("SUB:", d.get("sub")); print("AUD:", d.get("aud"))'
+
       - name: Configurar credenciais AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
