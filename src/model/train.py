@@ -6,7 +6,20 @@ treina com **seed fixa** e **split estratificado reprodutível** (R9.7), avalia
 (R1.4):
 
     - ``models/model.pkl``    — pipeline sklearn serializado via joblib.
-    - ``models/metrics.json`` — accuracy, f1 por classe, data do treino, versão.
+    - ``models/metrics.json`` — accuracy, f1 por classe, data do treino, versão
+      e os hiperparâmetros usados.
+
+------------------------------------------------------------------------------
+Hiperparâmetros
+------------------------------------------------------------------------------
+Os padrões ficam em ``DEFAULT_HYPERPARAMS`` e podem ser sobrescritos por
+chamada (``hyperparams={...}``), pela CLI (``--C``, ``--max-iter``,
+``--ngram-max``, ``--min-df``) ou pelos ``params`` da DAG do Airflow:
+
+    - ``C``         — inverso da regularização da LogisticRegression;
+    - ``max_iter``  — iterações máximas do solver;
+    - ``ngram_max`` — maior n-grama do TF-IDF (n-gramas de 1 até ``ngram_max``);
+    - ``min_df``    — frequência mínima de documento para um termo entrar.
 
 ------------------------------------------------------------------------------
 Reprodutibilidade (R9.7)
@@ -33,14 +46,17 @@ Uso:
     python -m src.model.train
     python -m src.model.train --data data/laudos.csv --model-dir models
     python -m src.model.train --test-size 0.2
+    python -m src.model.train --C 0.5 --ngram-max 3 --min-df 1
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import joblib
 import pandas as pd
@@ -50,13 +66,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 from src.data.generate_dataset import generate_dataset
-from src.model.preprocessing import build_vectorizer
+from src.model.preprocessing import MIN_DF, NGRAM_RANGE, build_vectorizer
 
 #: Seed fixa para todo o não-determinismo do treino (R9.7).
 RANDOM_STATE = 42
 
 #: Proporção padrão do conjunto de teste no split estratificado.
 DEFAULT_TEST_SIZE = 0.2
+
+#: Hiperparâmetros padrão do pipeline (ver docstring do módulo).
+DEFAULT_HYPERPARAMS: dict[str, Any] = {
+    "C": 1.0,
+    "max_iter": 1000,
+    "ngram_max": NGRAM_RANGE[1],
+    "min_df": MIN_DF,
+}
 
 #: Versão lógica do artefato gravada em metrics.json.
 MODEL_VERSION = "pkl-v1"
@@ -113,23 +137,70 @@ def load_dataset(data_path: Path = DEFAULT_DATA_PATH) -> pd.DataFrame:
     return df
 
 
-def build_pipeline() -> Pipeline:
+def resolve_hyperparams(overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Combina ``overrides`` com ``DEFAULT_HYPERPARAMS`` e valida o resultado.
+
+    Args:
+        overrides: hiperparâmetros a sobrescrever (chaves de
+            ``DEFAULT_HYPERPARAMS``); ``None`` usa só os padrões.
+
+    Returns:
+        Dicionário completo de hiperparâmetros, com tipos normalizados.
+
+    Raises:
+        ValueError: se houver chave desconhecida ou valor fora da faixa válida.
+    """
+    overrides = dict(overrides or {})
+    unknown = set(overrides) - set(DEFAULT_HYPERPARAMS)
+    if unknown:
+        raise ValueError(
+            f"Hiperparâmetros desconhecidos: {sorted(unknown)}. "
+            f"Válidos: {sorted(DEFAULT_HYPERPARAMS)}."
+        )
+
+    merged = {**DEFAULT_HYPERPARAMS, **overrides}
+    hyperparams = {
+        "C": float(merged["C"]),
+        "max_iter": int(merged["max_iter"]),
+        "ngram_max": int(merged["ngram_max"]),
+        "min_df": int(merged["min_df"]),
+    }
+
+    if hyperparams["C"] <= 0:
+        raise ValueError("C deve ser > 0.")
+    for key in ("max_iter", "ngram_max", "min_df"):
+        if hyperparams[key] < 1:
+            raise ValueError(f"{key} deve ser >= 1.")
+
+    return hyperparams
+
+
+def build_pipeline(hyperparams: Mapping[str, Any] | None = None) -> Pipeline:
     """Monta o ``Pipeline`` TF-IDF + Logistic Regression (R1.3).
 
     O vetorizador vem de ``preprocessing.build_vectorizer`` para manter o
     pré-processamento coeso entre treino e inferência (R9.6). O classificador
-    usa seed fixa (R9.7) e ``max_iter`` folgado para garantir convergência.
+    usa seed fixa (R9.7).
+
+    Args:
+        hyperparams: hiperparâmetros a sobrescrever (ver
+            ``resolve_hyperparams``); ``None`` usa os padrões.
 
     Returns:
         Um ``Pipeline`` sklearn não treinado.
     """
+    hp = resolve_hyperparams(hyperparams)
     return Pipeline(
         steps=[
-            ("tfidf", build_vectorizer()),
+            (
+                "tfidf",
+                build_vectorizer(ngram_range=(1, hp["ngram_max"]), min_df=hp["min_df"]),
+            ),
             (
                 "clf",
                 LogisticRegression(
-                    max_iter=1000,
+                    C=hp["C"],
+                    max_iter=hp["max_iter"],
                     random_state=RANDOM_STATE,
                 ),
             ),
@@ -141,12 +212,14 @@ def train_model(
     df: pd.DataFrame,
     *,
     test_size: float = DEFAULT_TEST_SIZE,
+    hyperparams: Mapping[str, Any] | None = None,
 ) -> tuple[Pipeline, pd.Series, pd.Series]:
     """Treina o pipeline com split estratificado reprodutível (R9.7).
 
     Args:
         df: dataset com colunas ``text,label``.
         test_size: proporção do conjunto de teste.
+        hyperparams: hiperparâmetros do pipeline (ver ``resolve_hyperparams``).
 
     Returns:
         Uma tupla ``(pipeline_treinado, y_test, y_pred)`` para avaliação.
@@ -162,7 +235,7 @@ def train_model(
         stratify=y,
     )
 
-    pipeline = build_pipeline()
+    pipeline = build_pipeline(hyperparams)
     pipeline.fit(x_train, y_train)
 
     y_pred = pd.Series(pipeline.predict(x_test), index=y_test.index)
@@ -198,13 +271,20 @@ def save_artifacts(
     metrics: dict,
     *,
     model_dir: Path = DEFAULT_MODEL_DIR,
+    hyperparams: Mapping[str, Any] | None = None,
+    test_size: float = DEFAULT_TEST_SIZE,
 ) -> tuple[Path, Path]:
     """Persiste o modelo (``model.pkl``) e as métricas (``metrics.json``) (R1.4).
+
+    Os hiperparâmetros e o ``test_size`` usados no treino são gravados no
+    ``metrics.json`` para que cada artefato seja auditável/reprodutível.
 
     Args:
         pipeline: pipeline sklearn treinado.
         metrics: métricas de avaliação (ver ``evaluate_model``).
         model_dir: diretório de saída dos artefatos.
+        hyperparams: hiperparâmetros usados no treino (``None`` = padrões).
+        test_size: proporção do conjunto de teste usada no treino.
 
     Returns:
         Tupla ``(caminho_modelo, caminho_metrics)``.
@@ -219,6 +299,8 @@ def save_artifacts(
         "model_version": MODEL_VERSION,
         "trained_at": datetime.now(UTC).isoformat(),
         "classes": list(URGENCY_CLASSES),
+        "hyperparams": resolve_hyperparams(hyperparams),
+        "test_size": test_size,
         **metrics,
     }
     metrics_path.write_text(json.dumps(metrics_payload, indent=2, ensure_ascii=False) + "\n")
@@ -231,6 +313,7 @@ def run_training(
     data_path: Path = DEFAULT_DATA_PATH,
     model_dir: Path = DEFAULT_MODEL_DIR,
     test_size: float = DEFAULT_TEST_SIZE,
+    hyperparams: Mapping[str, Any] | None = None,
 ) -> dict:
     """Executa o fluxo completo de treino: carregar, treinar, avaliar, persistir.
 
@@ -240,15 +323,20 @@ def run_training(
         data_path: caminho do dataset.
         model_dir: diretório de saída dos artefatos.
         test_size: proporção do conjunto de teste.
+        hyperparams: hiperparâmetros do pipeline (ver ``resolve_hyperparams``).
 
     Returns:
         As métricas de avaliação (ver ``evaluate_model``).
     """
+    hp = resolve_hyperparams(hyperparams)
     df = load_dataset(data_path)
-    pipeline, y_test, y_pred = train_model(df, test_size=test_size)
+    pipeline, y_test, y_pred = train_model(df, test_size=test_size, hyperparams=hp)
     metrics = evaluate_model(y_test, y_pred)
-    model_path, metrics_path = save_artifacts(pipeline, metrics, model_dir=model_dir)
+    model_path, metrics_path = save_artifacts(
+        pipeline, metrics, model_dir=model_dir, hyperparams=hp, test_size=test_size
+    )
 
+    print(f"Hiperparâmetros: {hp} | test_size: {test_size}")
     print(f"Modelo salvo em {model_path}")
     print(f"Métricas salvas em {metrics_path}")
     print(f"Accuracy: {metrics['accuracy']:.4f} | F1 macro: {metrics['f1_macro']:.4f}")
@@ -285,13 +373,47 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_TEST_SIZE,
         help=f"Proporção do conjunto de teste (padrão: {DEFAULT_TEST_SIZE}).",
     )
+    parser.add_argument(
+        "--C",
+        dest="C",
+        type=float,
+        default=DEFAULT_HYPERPARAMS["C"],
+        help=f"Inverso da regularização (padrão: {DEFAULT_HYPERPARAMS['C']}).",
+    )
+    parser.add_argument(
+        "--max-iter",
+        type=int,
+        default=DEFAULT_HYPERPARAMS["max_iter"],
+        help=f"Iterações máximas do solver (padrão: {DEFAULT_HYPERPARAMS['max_iter']}).",
+    )
+    parser.add_argument(
+        "--ngram-max",
+        type=int,
+        default=DEFAULT_HYPERPARAMS["ngram_max"],
+        help=f"Maior n-grama do TF-IDF (padrão: {DEFAULT_HYPERPARAMS['ngram_max']}).",
+    )
+    parser.add_argument(
+        "--min-df",
+        type=int,
+        default=DEFAULT_HYPERPARAMS["min_df"],
+        help=f"Frequência mínima de documento (padrão: {DEFAULT_HYPERPARAMS['min_df']}).",
+    )
     args = parser.parse_args(argv)
 
-    run_training(
-        data_path=args.data,
-        model_dir=args.model_dir,
-        test_size=args.test_size,
-    )
+    try:
+        run_training(
+            data_path=args.data,
+            model_dir=args.model_dir,
+            test_size=args.test_size,
+            hyperparams={
+                "C": args.C,
+                "max_iter": args.max_iter,
+                "ngram_max": args.ngram_max,
+                "min_df": args.min_df,
+            },
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     return 0
 
 
