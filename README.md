@@ -104,8 +104,23 @@ rodar sem `data/laudos.csv` presente, o fallback sintético é gerado automatica
 python -m src.model.train
 ```
 
-Gera `models/model.pkl` e `models/metrics.json` (accuracy e F1 por classe), com split
-estratificado reprodutível (seed 42).
+Gera `models/model.pkl` e `models/metrics.json` (accuracy, F1 por classe e os
+hiperparâmetros usados), com split estratificado reprodutível (seed 42).
+
+Os hiperparâmetros têm padrões em `src/model/train.py` (`DEFAULT_HYPERPARAMS`) e podem ser
+sobrescritos pela linha de comando:
+
+| Flag | Padrão | Efeito |
+|------|--------|--------|
+| `--C` | `1.0` | Inverso da regularização da LogisticRegression (maior = menos regularização) |
+| `--max-iter` | `1000` | Iterações máximas do solver |
+| `--ngram-max` | `2` | Maior n-grama do TF-IDF (1 = só palavras; 2 = + bigramas) |
+| `--min-df` | `2` | Nº mínimo de laudos em que um termo precisa aparecer |
+| `--test-size` | `0.2` | Proporção do dataset reservada para avaliação |
+
+```bash
+python -m src.model.train --C 0.5 --ngram-max 3 --min-df 1
+```
 
 ### 4. Exportar para ONNX
 
@@ -270,7 +285,14 @@ load_data → preprocess → train → evaluate → export_onnx → save_artifac
   trocando `schedule`, ex. `"@weekly"` — mantido comentado no código).
 - O encadeamento linear faz com que a falha de qualquer tarefa interrompa as dependentes.
 - Em caso de sucesso, `save_artifacts` persiste um novo artefato (`models/model.pkl` +
-  `models/metrics.json`).
+  `models/metrics.json`). O modelo é treinado uma única vez (tarefa `train`); as tarefas
+  seguintes reaproveitam esse artefato.
+
+**Parâmetros do treino.** A DAG declara `params` com os mesmos hiperparâmetros (e padrões)
+da CLI de treino: `C`, `max_iter`, `ngram_max`, `min_df` e `test_size`. Ao clicar em
+**Trigger DAG** na UI, o Airflow abre um formulário para alterá-los naquela execução. Os
+valores usados ficam gravados em `models/metrics.json` (`hyperparams` e `test_size`), o
+que permite comparar execuções.
 
 #### Demonstrar localmente (Docker Compose)
 
@@ -294,6 +316,10 @@ containers do Airflow) o equivalente é:
 
 ```bash
 docker compose exec airflow-scheduler airflow dags trigger train_triage_model
+
+# com parâmetros customizados (os omitidos usam o padrão)
+docker compose exec airflow-scheduler airflow dags trigger train_triage_model \
+  --conf '{"C": 0.5, "ngram_max": 3}'
 ```
 
 Encerrar a stack (use `-v` para também apagar o metadado do Postgres):
