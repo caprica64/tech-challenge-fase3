@@ -9,6 +9,10 @@ pandas==2.2.3
 joblib==1.4.2
 onnxruntime==1.20.1
 skl2onnx==1.18.0
+# skl2onnx 1.18.0 ainda importa `onnx.mapping`, removido no onnx >= 1.18. Sem
+# este pin o pip resolve um onnx novo demais e o import do skl2onnx quebra
+# (ImportError: mapping) — mesmo pin de airflow/Dockerfile.
+onnx==1.17.0
 
 # AWS SDK — download do artefato do modelo do S3 no cold start da Lambda (R10).
 # Importado de forma tardia (lazy) em src/model/inference.py: só é usado quando

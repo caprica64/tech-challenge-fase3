@@ -30,6 +30,19 @@ Agendamento e falhas (R5.3, R5.4, R5.5)
   (``models/model.pkl`` + ``models/metrics.json``), satisfazendo R5.3.
 
 ------------------------------------------------------------------------------
+Parâmetros do treino
+------------------------------------------------------------------------------
+A DAG declara ``params`` (``C``, ``max_iter``, ``ngram_max``, ``min_df``,
+``test_size``) com os mesmos padrões de ``src.model.train``. Na UI, o
+**Trigger DAG** abre um formulário para alterá-los por execução; pela CLI:
+
+    airflow dags trigger train_triage_model --conf '{"C": 0.5, "ngram_max": 3}'
+
+Os valores usados ficam gravados em ``models/metrics.json`` (``hyperparams``
+e ``test_size``). O modelo é treinado **uma única vez** (tarefa ``train``);
+``save_artifacts`` reaproveita esse artefato em vez de retreinar.
+
+------------------------------------------------------------------------------
 Importações
 ------------------------------------------------------------------------------
 ``src/model/export_onnx.py`` é entregue por outra tarefa (13.1) e pode ainda
@@ -50,6 +63,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from airflow import DAG
+from airflow.models.param import Param
 from airflow.operators.python import PythonOperator
 
 if TYPE_CHECKING:  # pragma: no cover - apenas para type checking
@@ -75,6 +89,15 @@ MODEL_DIR = PROJECT_ROOT / "models"
 XCOM_DATA_PATH = "data_path"
 XCOM_ROW_COUNT = "row_count"
 XCOM_METRICS = "metrics"
+
+#: Chaves dos ``params`` da DAG repassadas ao pipeline como hiperparâmetros
+#: (``test_size`` é tratado à parte, pois controla o split e não o pipeline).
+HYPERPARAM_KEYS = ("C", "max_iter", "ngram_max", "min_df")
+
+
+def _hyperparams(params: dict[str, Any]) -> dict[str, Any]:
+    """Extrai dos ``params`` da execução os hiperparâmetros do pipeline."""
+    return {key: params[key] for key in HYPERPARAM_KEYS}
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +126,7 @@ def load_data(ti: TaskInstance, **_: Any) -> int:
     return row_count
 
 
-def preprocess(ti: TaskInstance, **_: Any) -> dict[str, int]:
+def preprocess(ti: TaskInstance, params: dict[str, Any], **_: Any) -> dict[str, int]:
     """Valida os dados e materializa o pré-processamento TF-IDF (R1.3).
 
     O pré-processamento do projeto vive no ``TfidfVectorizer`` (ver
@@ -119,7 +142,8 @@ def preprocess(ti: TaskInstance, **_: Any) -> dict[str, int]:
     from src.model.train import build_pipeline, load_dataset
 
     df = load_dataset(DATA_PATH)
-    vectorizer = build_pipeline().named_steps["tfidf"]
+    # Mesmo vetorizador (ngram_max/min_df) que será usado no treino.
+    vectorizer = build_pipeline(_hyperparams(params)).named_steps["tfidf"]
     matrix = vectorizer.fit_transform(df["text"])
     vocab_size = int(len(vectorizer.vocabulary_))
 
@@ -137,14 +161,12 @@ def preprocess(ti: TaskInstance, **_: Any) -> dict[str, int]:
     return {"vocab_size": vocab_size, "n_samples": int(len(df))}
 
 
-def train(ti: TaskInstance, **_: Any) -> None:
-    """Treina o pipeline e serializa o modelo em ``models/model.pkl``.
+def train(ti: TaskInstance, params: dict[str, Any], **_: Any) -> None:
+    """Treina o pipeline com os ``params`` da execução e serializa o modelo.
 
-    Reutiliza ``train_model`` (split estratificado reprodutível) e grava já o
-    artefato do pipeline via ``save_artifacts`` com métricas provisórias, para
-    que ``evaluate`` e ``save_artifacts`` possam operar sobre o modelo treinado.
-    As métricas finais são recomputadas na tarefa ``evaluate`` e persistidas em
-    ``save_artifacts``.
+    Reutiliza ``train_model`` (split estratificado reprodutível) e grava o
+    artefato do pipeline via ``save_artifacts``, para que ``export_onnx`` e
+    ``save_artifacts`` operem sobre **este** modelo treinado (sem retreino).
 
     Publica as métricas de avaliação em XCom para a tarefa ``evaluate``.
     """
@@ -155,13 +177,23 @@ def train(ti: TaskInstance, **_: Any) -> None:
     )
     from src.model.train import load_dataset as _load_dataset
 
+    hyperparams = _hyperparams(params)
+    test_size = params["test_size"]
+    logger.info("Treinando com hiperparâmetros=%s | test_size=%s", hyperparams, test_size)
+
     df = _load_dataset(DATA_PATH)
-    pipeline, y_test, y_pred = train_model(df)
+    pipeline, y_test, y_pred = train_model(df, test_size=test_size, hyperparams=hyperparams)
     metrics = evaluate_model(y_test, y_pred)
 
     # Persiste o pipeline treinado (model.pkl) já nesta etapa para que as
     # tarefas seguintes tenham o artefato disponível no filesystem.
-    model_path, _ = save_artifacts(pipeline, metrics, model_dir=MODEL_DIR)
+    model_path, _ = save_artifacts(
+        pipeline,
+        metrics,
+        model_dir=MODEL_DIR,
+        hyperparams=hyperparams,
+        test_size=test_size,
+    )
     logger.info("Modelo treinado e serializado em %s", model_path)
 
     ti.xcom_push(key=XCOM_METRICS, value=metrics)
@@ -211,22 +243,14 @@ def export_onnx(**_: Any) -> str:
         )
         return "skipped: export_onnx indisponível"
 
-    # Resolve a função de exportação de forma flexível quanto ao nome público.
-    export_fn = None
-    for candidate in ("export_onnx", "export_model", "run_export", "main"):
-        export_fn = getattr(export_onnx_module, candidate, None)
-        if callable(export_fn):
-            break
-
-    if export_fn is None:
-        logger.warning(
-            "Módulo export_onnx encontrado, mas sem função de exportação "
-            "reconhecível; pulando a exportação ONNX."
-        )
-        return "skipped: função de exportação não encontrada"
-
+    # Caminhos explícitos ancorados em MODEL_DIR: os defaults do exportador são
+    # relativos ao cwd, que no worker do Airflow (/opt/airflow) não é a raiz do
+    # projeto — sem isto o model.pkl não é encontrado e o ONNX não é gerado.
     try:
-        result = export_fn()
+        result = export_onnx_module.export_onnx(
+            model_path=MODEL_DIR / "model.pkl",
+            output_path=MODEL_DIR / "model.onnx",
+        )
     except Exception:  # noqa: BLE001 - exportação é não-crítica neste estágio
         logger.exception(
             "Falha ao exportar ONNX; o pipeline segue com o artefato .pkl."
@@ -237,28 +261,34 @@ def export_onnx(**_: Any) -> str:
     return f"exported: {result}"
 
 
-def save_artifacts(ti: TaskInstance, **_: Any) -> dict[str, str]:
+def save_artifacts(ti: TaskInstance, params: dict[str, Any], **_: Any) -> dict[str, str]:
     """Persiste o artefato final do modelo + métricas (R5.3, R1.4).
 
-    Retreina de forma determinística (mesma seed) e reutiliza ``save_artifacts``
-    de ``src.model.train`` para gravar ``models/model.pkl`` e
-    ``models/metrics.json``, garantindo que uma execução bem-sucedida da DAG
-    **persista um novo artefato** (R5.3).
+    Reaproveita o pipeline treinado pela tarefa ``train`` (``models/model.pkl``)
+    e as métricas do XCom — **sem retreinar** — e grava ``models/model.pkl`` +
+    ``models/metrics.json`` (com os hiperparâmetros da execução) via
+    ``save_artifacts`` de ``src.model.train``, garantindo que uma execução
+    bem-sucedida da DAG **persista um novo artefato** (R5.3).
 
     Returns:
         Mapa com os caminhos persistidos do modelo e das métricas.
     """
-    from src.model.train import (
-        evaluate_model,
-        train_model,
-    )
-    from src.model.train import load_dataset as _load_dataset
+    import joblib
+    from src.model.train import MODEL_FILENAME
     from src.model.train import save_artifacts as _save_artifacts
 
-    df = _load_dataset(DATA_PATH)
-    pipeline, y_test, y_pred = train_model(df)
-    metrics = evaluate_model(y_test, y_pred)
-    model_path, metrics_path = _save_artifacts(pipeline, metrics, model_dir=MODEL_DIR)
+    metrics = ti.xcom_pull(key=XCOM_METRICS, task_ids="train")
+    if not metrics:
+        raise ValueError("Métricas ausentes no XCom; a tarefa 'train' falhou?")
+
+    pipeline = joblib.load(MODEL_DIR / MODEL_FILENAME)
+    model_path, metrics_path = _save_artifacts(
+        pipeline,
+        metrics,
+        model_dir=MODEL_DIR,
+        hyperparams=_hyperparams(params),
+        test_size=params["test_size"],
+    )
 
     logger.info(
         "Artefatos persistidos: modelo=%s | métricas=%s", model_path, metrics_path
@@ -285,6 +315,44 @@ with DAG(
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["mlops", "triagem", "treino"],
+    # Formulário do "Trigger DAG" na UI (ou --conf na CLI). Padrões iguais a
+    # src.model.train.DEFAULT_HYPERPARAMS / DEFAULT_TEST_SIZE (checado em
+    # tests/test_dag.py).
+    params={
+        "C": Param(
+            1.0,
+            type="number",
+            exclusiveMinimum=0,
+            description="Inverso da regularização da LogisticRegression "
+            "(maior = menos regularização).",
+        ),
+        "max_iter": Param(
+            1000,
+            type="integer",
+            minimum=1,
+            description="Iterações máximas do solver da LogisticRegression.",
+        ),
+        "ngram_max": Param(
+            2,
+            type="integer",
+            minimum=1,
+            maximum=3,
+            description="Maior n-grama do TF-IDF (1 = só palavras; 2 = + bigramas).",
+        ),
+        "min_df": Param(
+            2,
+            type="integer",
+            minimum=1,
+            description="Nº mínimo de laudos em que um termo precisa aparecer.",
+        ),
+        "test_size": Param(
+            0.2,
+            type="number",
+            minimum=0.05,
+            maximum=0.5,
+            description="Proporção do dataset reservada para avaliação.",
+        ),
+    },
 ) as dag:
     load_data_task = PythonOperator(
         task_id="load_data",
